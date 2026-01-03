@@ -7,7 +7,7 @@
     "dev": "tauri dev",
     "build": "tauri build",
     "tauri": "tauri",
-    "check:js": "biome check src-tauri/injections/**/*.js --fix",
+    "check:js": "biome check src-tauri/injections --fix",
     "check:rust": "cd src-tauri && cargo check",
     "postinstall": "lefthook install"
   },
