@@ -31,7 +31,12 @@ use tauri::webview::PlatformWebview;
 #[cfg(target_os = "windows")]
 use tauri_plugin_opener::OpenerExt;
 #[cfg(target_os = "windows")]
-use webview2_com::{take_pwstr, NewWindowRequestedEventHandler};
+use webview2_com::Microsoft::Web::WebView2::Win32::{
+  COREWEBVIEW2_PERMISSION_KIND, COREWEBVIEW2_PERMISSION_KIND_NOTIFICATIONS,
+  COREWEBVIEW2_PERMISSION_STATE_ALLOW,
+};
+#[cfg(target_os = "windows")]
+use webview2_com::{take_pwstr, NewWindowRequestedEventHandler, PermissionRequestedEventHandler};
 #[cfg(target_os = "windows")]
 use windows::core::PWSTR;
 
@@ -67,6 +72,33 @@ pub(crate) fn attach_new_window_handler(
   let mut token = 0i64;
   unsafe {
     core.add_NewWindowRequested(&handler, &mut token)?;
+  }
+  Ok(())
+}
+
+#[cfg(target_os = "windows")]
+pub(crate) fn attach_permission_handler(webview: &PlatformWebview) -> Result<()> {
+  let controller = webview.controller();
+  let core = unsafe { controller.CoreWebView2()? };
+  let handler = PermissionRequestedEventHandler::create(Box::new(move |_, args| {
+    let Some(args) = args else {
+      return Ok(());
+    };
+    let mut kind = COREWEBVIEW2_PERMISSION_KIND(0);
+    unsafe {
+      args.PermissionKind(&mut kind)?;
+    }
+    if kind == COREWEBVIEW2_PERMISSION_KIND_NOTIFICATIONS {
+      unsafe {
+        args.SetState(COREWEBVIEW2_PERMISSION_STATE_ALLOW)?;
+      }
+    }
+    Ok(())
+  }));
+
+  let mut token = 0i64;
+  unsafe {
+    core.add_PermissionRequested(&handler, &mut token)?;
   }
   Ok(())
 }

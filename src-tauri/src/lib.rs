@@ -13,7 +13,7 @@ use tauri::webview::PageLoadEvent;
 use tauri::{WebviewUrl, WebviewWindowBuilder};
 use tauri_plugin_opener::OpenerExt;
 #[cfg(target_os = "windows")]
-use windowing::attach_new_window_handler;
+use windowing::{attach_new_window_handler, attach_permission_handler};
 use windowing::{next_popup_label, should_open_external};
 
 #[cfg_attr(mobile, tauri::mobile_entry_point)]
@@ -81,8 +81,11 @@ pub fn run() {
             if let Err(error) = window.with_webview({
               let app_handle = app_handle.clone();
               move |webview| {
-                if let Err(error) = attach_new_window_handler(app_handle, &webview) {
+                if let Err(error) = attach_new_window_handler(app_handle.clone(), &webview) {
                   eprintln!("[new-window] handler failed: {error:#}");
+                }
+                if let Err(error) = attach_permission_handler(&webview) {
+                  eprintln!("[new-window] permission handler failed: {error:#}");
                 }
               }
             }) {

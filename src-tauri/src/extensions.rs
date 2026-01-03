@@ -9,7 +9,7 @@ use crate::crx::{
 };
 
 #[cfg(target_os = "windows")]
-use crate::windowing::attach_new_window_handler;
+use crate::windowing::{attach_new_window_handler, attach_permission_handler};
 #[cfg(target_os = "windows")]
 use std::sync::mpsc;
 #[cfg(target_os = "windows")]
@@ -152,6 +152,7 @@ pub(crate) fn install_extensions_and_open(
   let controller = webview.controller();
   let core = unsafe { controller.CoreWebView2()? };
   attach_new_window_handler(app_handle, &webview)?;
+  attach_permission_handler(&webview)?;
   unsafe {
     let settings = core.Settings()?;
     settings.SetIsScriptEnabled(true)?;
