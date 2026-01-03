@@ -7,6 +7,7 @@ use sha2::{Digest, Sha256};
 use std::fs;
 use std::io::{Cursor, Read, Write};
 use std::path::{Path, PathBuf};
+use std::sync::atomic::{AtomicUsize, Ordering};
 use std::sync::mpsc;
 use tauri::path::BaseDirectory;
 use tauri::{Manager, WebviewUrl, WebviewWindowBuilder};
@@ -35,6 +36,7 @@ use windows::core::BOOL;
 
 const FONT_SCRIPT: &str = include_str!("../injections/font.js");
 const SIDEBAR_SCRIPT: &str = include_str!("../injections/sidebar.js");
+static NEXT_WINDOW_ID: AtomicUsize = AtomicUsize::new(1);
 
 #[derive(serde::Deserialize)]
 struct AppConfig {
@@ -387,6 +389,11 @@ fn inject_scripts(window: &tauri::WebviewWindow) -> Result<(), tauri::Error> {
     Ok(())
 }
 
+fn next_popup_label() -> String {
+    let id = NEXT_WINDOW_ID.fetch_add(1, Ordering::Relaxed);
+    format!("popup-{id}")
+}
+
 #[cfg_attr(mobile, tauri::mobile_entry_point)]
 pub fn run() {
     tauri::Builder::default()
@@ -411,6 +418,38 @@ pub fn run() {
             .title("better-line")
             .inner_size(1280.0, 800.0)
             .browser_extensions_enabled(true)
+            .on_new_window({
+                let app_handle = app_handle.clone();
+                move |url, features| {
+                    let label = next_popup_label();
+                    let builder = WebviewWindowBuilder::new(
+                        &app_handle,
+                        label,
+                        WebviewUrl::External(url.clone()),
+                    )
+                    .browser_extensions_enabled(true)
+                    .window_features(features)
+                    .on_page_load(|window, payload| {
+                        if payload.event() == PageLoadEvent::Finished {
+                            let current_url = payload.url().as_str();
+                            if current_url.starts_with("chrome-extension://") {
+                                let _ = inject_scripts(&window);
+                            }
+                        }
+                    })
+                    .title(url.as_str());
+
+                    let window = match builder.build() {
+                        Ok(window) => window,
+                        Err(error) => {
+                            eprintln!("[new-window] failed: {error:#}");
+                            return tauri::webview::NewWindowResponse::Deny;
+                        }
+                    };
+
+                    tauri::webview::NewWindowResponse::Create { window }
+                }
+            })
             .on_page_load({
                 move |window, payload| {
                     if payload.event() == PageLoadEvent::Finished {
