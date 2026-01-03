@@ -12,6 +12,7 @@ use std::sync::mpsc;
 use tauri::path::BaseDirectory;
 use tauri::{Manager, WebviewUrl, WebviewWindowBuilder};
 use tauri::webview::PageLoadEvent;
+use tauri_plugin_opener::OpenerExt;
 use url::Url;
 use zip::ZipArchive;
 #[cfg(target_os = "windows")]
@@ -20,6 +21,7 @@ use tauri::webview::PlatformWebview;
 use webview2_com::{
     wait_with_pump,
     BrowserExtensionEnableCompletedHandler,
+    NewWindowRequestedEventHandler,
     ProfileAddBrowserExtensionCompletedHandler,
     take_pwstr,
 };
@@ -346,6 +348,7 @@ fn collect_user_extension_dirs(user_dir: &Path) -> Result<Vec<PathBuf>> {
 
 #[cfg(target_os = "windows")]
 fn install_extensions_and_open(
+    app_handle: tauri::AppHandle,
     webview: PlatformWebview,
     line_dir: PathBuf,
     user_dir: PathBuf,
@@ -353,6 +356,7 @@ fn install_extensions_and_open(
 ) -> Result<()> {
     let controller = webview.controller();
     let core = unsafe { controller.CoreWebView2()? };
+    attach_new_window_handler(app_handle, &webview)?;
     unsafe {
         let settings = core.Settings()?;
         settings.SetIsScriptEnabled(true)?;
@@ -394,12 +398,64 @@ fn next_popup_label() -> String {
     format!("popup-{id}")
 }
 
+fn should_open_external(url: &Url) -> bool {
+    match url.scheme() {
+        "http" | "https" => !is_localhost_url(url),
+        "mailto" | "tel" => true,
+        _ => false,
+    }
+}
+
+// to avoid tauri front from opening in the browser
+fn is_localhost_url(url: &Url) -> bool {
+    matches!(
+        url.host_str(),
+        Some("localhost") | Some("127.0.0.1") | Some("::1")
+    )
+}
+
+#[cfg(target_os = "windows")]
+fn attach_new_window_handler(
+    app_handle: tauri::AppHandle,
+    webview: &PlatformWebview,
+) -> Result<()> {
+    let controller = webview.controller();
+    let core = unsafe { controller.CoreWebView2()? };
+    let handler = NewWindowRequestedEventHandler::create(Box::new(move |_, args| {
+        let Some(args) = args else {
+            return Ok(());
+        };
+        let mut uri_ptr = PWSTR::null();
+        unsafe {
+            args.Uri(&mut uri_ptr)?;
+        }
+        let uri = take_pwstr(uri_ptr);
+        if let Ok(url) = Url::parse(&uri) {
+            if should_open_external(&url) {
+                if let Err(error) = app_handle.opener().open_url(url.as_str(), None::<&str>) {
+                    eprintln!("[open] failed: {error:#}");
+                }
+                unsafe {
+                    args.SetHandled(true)?;
+                }
+            }
+        }
+        Ok(())
+    }));
+
+    let mut token = 0i64;
+    unsafe {
+        core.add_NewWindowRequested(&handler, &mut token)?;
+    }
+    Ok(())
+}
+
 #[cfg_attr(mobile, tauri::mobile_entry_point)]
 pub fn run() {
     tauri::Builder::default()
         .plugin(tauri_plugin_opener::init())
         .setup(|app| {
-            let app_handle = app.handle();
+            let app_handle = app.handle().clone();
             let (line_dir, user_dir) = match prepare_extensions(&app_handle) {
                 Ok(result) => result,
                 Err(error) => {
@@ -411,7 +467,7 @@ pub fn run() {
             let config = load_config(&app_handle)?;
 
             WebviewWindowBuilder::new(
-                app,
+                &app_handle,
                 "main",
                 WebviewUrl::App("index.html".into()),
             )
@@ -421,6 +477,13 @@ pub fn run() {
             .on_new_window({
                 let app_handle = app_handle.clone();
                 move |url, features| {
+                    if should_open_external(&url) {
+                        let _ = app_handle
+                            .opener()
+                            .open_url(url.as_str(), None::<&str>);
+                        return tauri::webview::NewWindowResponse::Deny;
+                    }
+
                     let label = next_popup_label();
                     let builder = WebviewWindowBuilder::new(
                         &app_handle,
@@ -429,6 +492,18 @@ pub fn run() {
                     )
                     .browser_extensions_enabled(true)
                     .window_features(features)
+                    .on_navigation({
+                        let app_handle = app_handle.clone();
+                        move |url| {
+                            if should_open_external(url) {
+                                let _ = app_handle
+                                    .opener()
+                                    .open_url(url.as_str(), None::<&str>);
+                                return false;
+                            }
+                            true
+                        }
+                    })
                     .on_page_load(|window, payload| {
                         if payload.event() == PageLoadEvent::Finished {
                             let current_url = payload.url().as_str();
@@ -447,7 +522,31 @@ pub fn run() {
                         }
                     };
 
+                    #[cfg(target_os = "windows")]
+                    if let Err(error) = window.with_webview({
+                        let app_handle = app_handle.clone();
+                        move |webview| {
+                            if let Err(error) = attach_new_window_handler(app_handle, &webview) {
+                                eprintln!("[new-window] handler failed: {error:#}");
+                            }
+                        }
+                    }) {
+                        eprintln!("[new-window] with_webview failed: {error:#}");
+                    }
+
                     tauri::webview::NewWindowResponse::Create { window }
+                }
+            })
+            .on_navigation({
+                let app_handle = app_handle.clone();
+                move |url| {
+                    if should_open_external(url) {
+                        let _ = app_handle
+                            .opener()
+                            .open_url(url.as_str(), None::<&str>);
+                        return false;
+                    }
+                    true
                 }
             })
             .on_page_load({
@@ -463,12 +562,13 @@ pub fn run() {
             })
             .build()?
             .with_webview(move |webview| {
-                let result = install_extensions_and_open(
-                    webview,
-                    line_dir,
-                    user_dir,
-                    config.line_entry_path,
-                );
+    let result = install_extensions_and_open(
+        app_handle.clone(),
+        webview,
+        line_dir,
+        user_dir,
+        config.line_entry_path,
+    );
 
                 if let Err(error) = result {
                     eprintln!("[open] failed: {error:#}");
