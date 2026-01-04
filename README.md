@@ -1,1 +1,12 @@
-# better-line (Tauri v2 + WebView2)
+# better-line
+
+Only support Windows.
+
+## Current Features
+
+- Antialias Font
+- Toggle Side Bar (Alt + L)
+
+## How it work
+
+This application just loads official Chrome Extension automatically, so nothing unofficial is used under the ToS.
