@@ -2,9 +2,10 @@
 
 Only support Windows.
 
-## Current Features
+## Current Original Features
 
-- Antialias Font
+- Antialiased Font
+- Send refined desktop notifications
 - Hide Side Bar (Alt + L)
   - default: off
 - Hide window from capture (Alt + H)
