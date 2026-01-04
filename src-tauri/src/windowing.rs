@@ -29,6 +29,8 @@ use anyhow::Result;
 #[cfg(target_os = "windows")]
 use tauri::webview::PlatformWebview;
 #[cfg(target_os = "windows")]
+use tauri::Manager;
+#[cfg(target_os = "windows")]
 use tauri_plugin_opener::OpenerExt;
 #[cfg(target_os = "windows")]
 use webview2_com::Microsoft::Web::WebView2::Win32::{
@@ -36,7 +38,10 @@ use webview2_com::Microsoft::Web::WebView2::Win32::{
   COREWEBVIEW2_PERMISSION_STATE_ALLOW,
 };
 #[cfg(target_os = "windows")]
-use webview2_com::{take_pwstr, NewWindowRequestedEventHandler, PermissionRequestedEventHandler};
+use webview2_com::{
+  take_pwstr, NewWindowRequestedEventHandler, PermissionRequestedEventHandler,
+  WindowCloseRequestedEventHandler,
+};
 #[cfg(target_os = "windows")]
 use windows::core::PWSTR;
 
@@ -99,6 +104,32 @@ pub(crate) fn attach_permission_handler(webview: &PlatformWebview) -> Result<()>
   let mut token = 0i64;
   unsafe {
     core.add_PermissionRequested(&handler, &mut token)?;
+  }
+  Ok(())
+}
+
+#[cfg(target_os = "windows")]
+pub(crate) fn attach_close_requested_handler(
+  app_handle: tauri::AppHandle,
+  webview: &PlatformWebview,
+  label: String,
+) -> Result<()> {
+  if !label.starts_with("popup-") {
+    return Ok(());
+  }
+
+  let controller = webview.controller();
+  let core = unsafe { controller.CoreWebView2()? };
+  let handler = WindowCloseRequestedEventHandler::create(Box::new(move |_, _| {
+    if let Some(window) = app_handle.get_webview_window(&label) {
+      let _ = window.close();
+    }
+    Ok(())
+  }));
+
+  let mut token = 0i64;
+  unsafe {
+    core.add_WindowCloseRequested(&handler, &mut token)?;
   }
   Ok(())
 }

@@ -7,6 +7,7 @@ use sha2::{Digest, Sha256};
 use std::fs;
 use std::io::{Cursor, Read, Write};
 use std::path::Path;
+use std::time::Duration;
 use url::Url;
 use zip::ZipArchive;
 
@@ -44,9 +45,15 @@ pub(crate) fn build_update_url(base: &str, extension_id: &str) -> String {
 }
 
 pub(crate) fn download_crx(url: &str) -> Result<Vec<u8>> {
+  let agent = ureq::AgentBuilder::new()
+    .timeout_connect(Duration::from_secs(10))
+    .timeout_read(Duration::from_secs(30))
+    .timeout_write(Duration::from_secs(30))
+    .build();
   let mut current = Url::parse(url)?;
   for _ in 0..5 {
-    let response = ureq::get(current.as_str())
+    let response = agent
+      .get(current.as_str())
       .call()
       .map_err(|error| anyhow!("download failed: {error}"))?;
 
