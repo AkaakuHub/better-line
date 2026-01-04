@@ -103,7 +103,7 @@
     if (!toggleEl || !parent.contains(toggleEl)) {
       if (toggleEl) toggleEl.remove();
       const el = document.createElement("div");
-      el.id = "better-line-sidebar-toggle";
+      el.id = "refined-line-sidebar-toggle";
       el.setAttribute("role", "button");
       el.setAttribute("aria-label", "Toggle sidebar");
       el.title = "サイドバーの表示を切り替え (Alt+L)";

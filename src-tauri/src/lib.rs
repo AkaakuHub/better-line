@@ -33,7 +33,7 @@ pub fn run() {
       let config = load_config(&app_handle)?;
 
       WebviewWindowBuilder::new(&app_handle, "main", WebviewUrl::App("index.html".into()))
-        .title("better-line")
+        .title("refined-line")
         .inner_size(1280.0, 800.0)
         .browser_extensions_enabled(true)
         .on_new_window({

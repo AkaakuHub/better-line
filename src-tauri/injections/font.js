@@ -1,5 +1,5 @@
 (() => {
-  const id = "better-line-font-override";
+  const id = "refined-line-font-override";
   if (document.getElementById(id)) return;
   const style = document.createElement("style");
   style.id = id;
