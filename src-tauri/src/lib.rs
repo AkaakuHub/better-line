@@ -1,22 +1,28 @@
+mod commands;
 mod config;
 mod crx;
 mod extensions;
 mod injections;
+mod settings;
+mod tray;
 mod windowing;
 
+use commands::{get_settings, update_settings};
 use config::load_config;
 #[cfg(target_os = "windows")]
 use extensions::install_extensions_and_open;
 use extensions::prepare_extensions;
-use injections::{inject_hotkeys, inject_scripts};
+use injections::{inject_hotkeys, inject_scripts, inject_settings};
+use settings::{load_settings, update_content_protection};
 use std::collections::HashMap;
 use std::sync::{
   atomic::{AtomicBool, Ordering},
   Mutex,
 };
 use tauri::webview::PageLoadEvent;
-use tauri::{Manager, Runtime, State, WebviewUrl, WebviewWindowBuilder};
+use tauri::{Emitter, Manager, Runtime, State, WebviewUrl, WebviewWindowBuilder};
 use tauri_plugin_opener::OpenerExt;
+use tray::setup_tray;
 #[cfg(target_os = "windows")]
 use windowing::{
   attach_close_requested_handler, attach_new_window_handler, attach_permission_handler,
@@ -32,15 +38,18 @@ pub fn run() {
       if payload.event() != PageLoadEvent::Finished {
         return;
       }
-      let _ = inject_hotkeys(webview);
       let current_url = payload.url().as_str();
+      let window = webview.window();
+      let label = window.label().to_string();
+      let _ = inject_hotkeys(webview);
       if current_url.starts_with("chrome-extension://") {
         let _ = inject_scripts(webview);
+        if label == "main" {
+          let _ = inject_settings(webview);
+        }
       }
 
-      let window = webview.window();
       let app_handle = window.app_handle().clone();
-      let label = window.label().to_string();
       let protected = app_handle
         .state::<WindowState>()
         .protected
@@ -55,11 +64,22 @@ pub fn run() {
         );
       }
     })
-    .invoke_handler(tauri::generate_handler![toggle_content_protection])
+    .invoke_handler(tauri::generate_handler![
+      toggle_content_protection,
+      get_content_protection,
+      set_content_protection,
+      get_settings,
+      update_settings
+    ])
+    .plugin(tauri_plugin_autostart::init(
+      tauri_plugin_autostart::MacosLauncher::LaunchAgent,
+      None,
+    ))
     .plugin(tauri_plugin_opener::init())
     .setup(|app| {
       let app_handle = app.handle().clone();
-      app.manage(WindowState::new());
+      let settings = load_settings(&app_handle).unwrap_or_default();
+      app.manage(WindowState::new(settings.content_protection));
       let config = load_config(&app_handle)?;
 
       let base_title = "refined-line";
@@ -169,6 +189,12 @@ pub fn run() {
           .build()?;
 
       store_base_title(&app_handle, "main", base_title);
+      if let Err(error) = setup_tray(&app_handle) {
+        eprintln!("[tray] failed: {error:#}");
+      }
+      if settings.start_minimized {
+        let _ = _window.minimize();
+      }
 
       let entry_path = config.line_entry_path.clone();
       let app_handle_for_update = app_handle.clone();
@@ -219,9 +245,9 @@ struct WindowState {
 }
 
 impl WindowState {
-  fn new() -> Self {
+  fn new(protected: bool) -> Self {
     Self {
-      protected: AtomicBool::new(true),
+      protected: AtomicBool::new(protected),
       titles: Mutex::new(HashMap::new()),
     }
   }
@@ -246,9 +272,35 @@ fn toggle_content_protection(
   state: State<WindowState>,
 ) -> Result<bool, String> {
   let enabled = !state.protected.load(Ordering::Relaxed);
+  set_content_protection_state(&app_handle, &state, enabled)
+}
+
+#[tauri::command]
+fn get_content_protection(state: State<WindowState>) -> Result<bool, String> {
+  Ok(state.protected.load(Ordering::Relaxed))
+}
+
+#[tauri::command]
+fn set_content_protection(
+  app_handle: tauri::AppHandle,
+  state: State<WindowState>,
+  enabled: bool,
+) -> Result<bool, String> {
+  set_content_protection_state(&app_handle, &state, enabled)
+}
+
+fn set_content_protection_state(
+  app_handle: &tauri::AppHandle,
+  state: &State<WindowState>,
+  enabled: bool,
+) -> Result<bool, String> {
   state.protected.store(enabled, Ordering::Relaxed);
-  let count = apply_content_protection(&app_handle, enabled);
-  println!("[content-protected] toggled {enabled} windows={count}");
+  let count = apply_content_protection(app_handle, enabled);
+  if let Err(error) = update_content_protection(app_handle, enabled) {
+    eprintln!("[content-protected] save failed: {error:#}");
+  }
+  let _ = app_handle.emit("content-protection-changed", enabled);
+  println!("[content-protected] set {enabled} windows={count}");
   Ok(enabled)
 }
 

@@ -33,11 +33,6 @@
         }
         return;
       }
-      if (typeof console !== "undefined") {
-        console.info(
-          `[refined-line] hotkey invoke source=${window.__refinedLineInvokeSource || "unknown"}`,
-        );
-      }
       invoke("toggle_content_protection").catch((error) => {
         if (typeof console !== "undefined") {
           console.error("[refined-line] hotkey invoke failed", error);

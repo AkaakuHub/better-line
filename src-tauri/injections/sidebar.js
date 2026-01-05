@@ -71,7 +71,7 @@
     lineA.style.left = "2px";
     lineA.style.width = "6px";
     lineA.style.height = "2px";
-    lineA.style.background = "#111";
+    lineA.style.background = "#ddd";
     lineA.style.borderRadius = "2px";
     lineA.style.transformOrigin = "center";
 
@@ -81,7 +81,7 @@
     lineB.style.left = "2px";
     lineB.style.width = "6px";
     lineB.style.height = "2px";
-    lineB.style.background = "#111";
+    lineB.style.background = "#ddd";
     lineB.style.borderRadius = "2px";
     lineB.style.transformOrigin = "center";
 
@@ -114,7 +114,7 @@
       el.style.height = "40px";
       el.style.borderRadius = "0 8px 8px 0";
       el.style.background = "#fff";
-      el.style.border = "2px solid #efefef";
+      el.style.border = "2px solid #ddd";
       el.style.borderLeft = "none";
       el.style.cursor = "pointer";
       el.style.zIndex = "9999";
