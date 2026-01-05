@@ -29,7 +29,7 @@ use tauri::webview::PageLoadEvent;
 use tauri::{Manager, WebviewUrl, WebviewWindowBuilder};
 use tauri_plugin_autostart::ManagerExt;
 use tauri_plugin_opener::OpenerExt;
-use tray::setup_tray;
+use tray::{init_tray_state, is_tray_enabled};
 use updater::spawn_update_check;
 #[cfg(target_os = "windows")]
 use windowing::{
@@ -73,6 +73,14 @@ pub fn run() {
     ])
     .on_menu_event(|app, event| {
       handle_menu_event(app, event);
+    })
+    .on_window_event(|window, event| {
+      if let tauri::WindowEvent::CloseRequested { api, .. } = event {
+        if window.label() == "main" && is_tray_enabled(window.app_handle()) {
+          api.prevent_close();
+          let _ = window.hide();
+        }
+      }
     })
     .plugin(build_plugin())
     .plugin(tauri_plugin_autostart::init(
@@ -202,7 +210,7 @@ pub fn run() {
 
       store_base_title(&app_handle, "main", base_title);
       app.manage(menu_state);
-      if let Err(error) = setup_tray(&app_handle) {
+      if let Err(error) = init_tray_state(&app_handle, settings.start_minimized) {
         warn!("[tray] failed: {error:#}");
       }
       spawn_update_check(&app_handle);

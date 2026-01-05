@@ -1,6 +1,7 @@
 use crate::content_protection::{is_content_protected, set_content_protection_from_app};
 use crate::logger::{apply_log_level, LogLevel};
 use crate::settings::{load_settings, save_settings};
+use crate::tray::set_tray_enabled;
 use tauri::menu::{CheckMenuItem, Menu, MenuEvent, MenuId, PredefinedMenuItem, Submenu};
 use tauri::{Manager, Wry};
 use tauri_plugin_autostart::ManagerExt;
@@ -174,11 +175,12 @@ pub(crate) fn handle_menu_event(app_handle: &tauri::AppHandle, event: MenuEvent)
         .map(|settings| settings.start_minimized)
         .unwrap_or(false);
       let target = !current;
+      let tray_enabled = set_tray_enabled(app_handle, target);
       if let Ok(mut settings) = load_settings(app_handle) {
-        settings.start_minimized = target;
+        settings.start_minimized = tray_enabled;
         let _ = save_settings(app_handle, &settings);
       }
-      set_menu_checked(app_handle, MENU_START_MINIMIZED_ID, target);
+      set_menu_checked(app_handle, MENU_START_MINIMIZED_ID, tray_enabled);
     }
     id if id == MENU_LOG_ERROR_ID => {
       update_log_level(app_handle, LogLevel::Error);
