@@ -29,6 +29,14 @@ pub(crate) fn is_content_protected<R: Runtime>(app_handle: &tauri::AppHandle<R>)
     .load(Ordering::Relaxed)
 }
 
+pub(crate) fn set_content_protection_from_app(
+  app_handle: &tauri::AppHandle,
+  enabled: bool,
+) -> Result<bool, String> {
+  let state = app_handle.state::<WindowState>();
+  set_content_protection_state(app_handle, &state, enabled)
+}
+
 fn apply_content_protection<R: Runtime>(
   app_handle: &tauri::AppHandle<R>,
   protected: bool,
@@ -75,6 +83,11 @@ fn set_content_protection_state(
   if let Err(error) = update_content_protection(app_handle, enabled) {
     eprintln!("[content-protected] save failed: {error:#}");
   }
+  crate::app_menu::set_menu_checked(
+    app_handle,
+    crate::app_menu::menu_content_protection_id(),
+    enabled,
+  );
   let _ = app_handle.emit("content-protection-changed", enabled);
   println!("[content-protected] set {enabled} windows={count}");
   Ok(enabled)

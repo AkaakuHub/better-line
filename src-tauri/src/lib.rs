@@ -1,3 +1,4 @@
+mod app_menu;
 mod commands;
 mod config;
 mod content_protection;
@@ -8,6 +9,7 @@ mod settings;
 mod tray;
 mod windowing;
 
+use app_menu::{build_menu, handle_menu_event};
 use commands::{get_settings, update_settings};
 use config::load_config;
 use content_protection::{
@@ -17,7 +19,7 @@ use content_protection::{
 #[cfg(target_os = "windows")]
 use extensions::install_extensions_and_open;
 use extensions::prepare_extensions;
-use injections::{inject_hotkeys, inject_scripts, inject_settings};
+use injections::{inject_hotkeys, inject_scripts};
 use settings::load_settings;
 use tauri::webview::PageLoadEvent;
 use tauri::{Manager, WebviewUrl, WebviewWindowBuilder};
@@ -42,9 +44,6 @@ pub fn run() {
       let _ = inject_hotkeys(webview);
       if current_url.starts_with("chrome-extension://") {
         let _ = inject_scripts(webview);
-        if label == "main" {
-          let _ = inject_settings(webview);
-        }
       }
 
       let app_handle = window.app_handle().clone();
@@ -66,6 +65,9 @@ pub fn run() {
       get_settings,
       update_settings
     ])
+    .on_menu_event(|app, event| {
+      handle_menu_event(app, event);
+    })
     .plugin(tauri_plugin_autostart::init(
       tauri_plugin_autostart::MacosLauncher::LaunchAgent,
       None,
@@ -76,6 +78,7 @@ pub fn run() {
       let settings = load_settings(&app_handle).unwrap_or_default();
       app.manage(WindowState::new(settings.content_protection));
       let config = load_config(&app_handle)?;
+      let menu_state = build_menu(&app_handle, &settings)?;
 
       let base_title = "refined-line";
       let _window =
@@ -83,6 +86,7 @@ pub fn run() {
           .title(base_title)
           .inner_size(1280.0, 800.0)
           .browser_extensions_enabled(true)
+          .menu(menu_state.menu.clone())
           .on_navigation({
             let app_handle = app_handle.clone();
             move |url| {
@@ -181,6 +185,7 @@ pub fn run() {
           .build()?;
 
       store_base_title(&app_handle, "main", base_title);
+      app.manage(menu_state);
       if let Err(error) = setup_tray(&app_handle) {
         eprintln!("[tray] failed: {error:#}");
       }
