@@ -1,5 +1,6 @@
 mod commands;
 mod config;
+mod content_protection;
 mod crx;
 mod extensions;
 mod injections;
@@ -9,18 +10,17 @@ mod windowing;
 
 use commands::{get_settings, update_settings};
 use config::load_config;
+use content_protection::{
+  ensure_base_title, get_content_protection, is_content_protected, set_content_protected,
+  set_content_protection, store_base_title, toggle_content_protection, WindowState,
+};
 #[cfg(target_os = "windows")]
 use extensions::install_extensions_and_open;
 use extensions::prepare_extensions;
 use injections::{inject_hotkeys, inject_scripts, inject_settings};
-use settings::{load_settings, update_content_protection};
-use std::collections::HashMap;
-use std::sync::{
-  atomic::{AtomicBool, Ordering},
-  Mutex,
-};
+use settings::load_settings;
 use tauri::webview::PageLoadEvent;
-use tauri::{Emitter, Manager, Runtime, State, WebviewUrl, WebviewWindowBuilder};
+use tauri::{Manager, WebviewUrl, WebviewWindowBuilder};
 use tauri_plugin_opener::OpenerExt;
 use tray::setup_tray;
 #[cfg(target_os = "windows")]
@@ -28,8 +28,6 @@ use windowing::{
   attach_close_requested_handler, attach_new_window_handler, attach_permission_handler,
 };
 use windowing::{next_popup_label, should_open_external};
-
-const HIDDEN_TITLE_SUFFIX: &str = " - hidden window";
 
 #[cfg_attr(mobile, tauri::mobile_entry_point)]
 pub fn run() {
@@ -50,10 +48,7 @@ pub fn run() {
       }
 
       let app_handle = window.app_handle().clone();
-      let protected = app_handle
-        .state::<WindowState>()
-        .protected
-        .load(Ordering::Relaxed);
+      let protected = is_content_protected(&app_handle);
       if let Some(webview_window) = app_handle.get_webview_window(&label) {
         let base_title = ensure_base_title(&app_handle, &webview_window, &label);
         set_content_protected(
@@ -143,10 +138,7 @@ pub fn run() {
                 }
               };
 
-              let protected = app_handle
-                .state::<WindowState>()
-                .protected
-                .load(Ordering::Relaxed);
+              let protected = is_content_protected(&app_handle);
               let window_for_tasks = window.clone();
               let app_handle_for_tasks = app_handle.clone();
               let popup_label_for_tasks = popup_label.clone();
@@ -237,126 +229,4 @@ pub fn run() {
     })
     .run(tauri::generate_context!())
     .expect("error while running tauri application");
-}
-
-struct WindowState {
-  protected: AtomicBool,
-  titles: Mutex<HashMap<String, String>>,
-}
-
-impl WindowState {
-  fn new(protected: bool) -> Self {
-    Self {
-      protected: AtomicBool::new(protected),
-      titles: Mutex::new(HashMap::new()),
-    }
-  }
-}
-
-fn apply_content_protection<R: Runtime>(
-  app_handle: &tauri::AppHandle<R>,
-  protected: bool,
-) -> usize {
-  let mut count = 0usize;
-  for (label, window) in app_handle.webview_windows() {
-    count += 1;
-    let base_title = get_base_title(app_handle, &label);
-    set_content_protected(&window, &label, protected, base_title.as_deref());
-  }
-  count
-}
-
-#[tauri::command]
-fn toggle_content_protection(
-  app_handle: tauri::AppHandle,
-  state: State<WindowState>,
-) -> Result<bool, String> {
-  let enabled = !state.protected.load(Ordering::Relaxed);
-  set_content_protection_state(&app_handle, &state, enabled)
-}
-
-#[tauri::command]
-fn get_content_protection(state: State<WindowState>) -> Result<bool, String> {
-  Ok(state.protected.load(Ordering::Relaxed))
-}
-
-#[tauri::command]
-fn set_content_protection(
-  app_handle: tauri::AppHandle,
-  state: State<WindowState>,
-  enabled: bool,
-) -> Result<bool, String> {
-  set_content_protection_state(&app_handle, &state, enabled)
-}
-
-fn set_content_protection_state(
-  app_handle: &tauri::AppHandle,
-  state: &State<WindowState>,
-  enabled: bool,
-) -> Result<bool, String> {
-  state.protected.store(enabled, Ordering::Relaxed);
-  let count = apply_content_protection(app_handle, enabled);
-  if let Err(error) = update_content_protection(app_handle, enabled) {
-    eprintln!("[content-protected] save failed: {error:#}");
-  }
-  let _ = app_handle.emit("content-protection-changed", enabled);
-  println!("[content-protected] set {enabled} windows={count}");
-  Ok(enabled)
-}
-
-fn set_content_protected<R: Runtime>(
-  window: &tauri::WebviewWindow<R>,
-  label: &str,
-  protected: bool,
-  base_title: Option<&str>,
-) {
-  if let Err(error) = window.set_content_protected(protected) {
-    eprintln!("[content-protected] {label} failed: {error:#}");
-  } else {
-    if let Some(base_title) = base_title {
-      update_window_title(window, base_title, protected);
-    }
-    println!("[content-protected] {label} set {protected}");
-  }
-}
-
-fn update_window_title<R: Runtime>(
-  window: &tauri::WebviewWindow<R>,
-  base_title: &str,
-  protected: bool,
-) {
-  let next = if protected {
-    format!("{base_title}{HIDDEN_TITLE_SUFFIX}")
-  } else {
-    base_title.to_string()
-  };
-  let _ = window.set_title(&next);
-}
-
-fn store_base_title<R: Runtime>(app_handle: &tauri::AppHandle<R>, label: &str, base_title: &str) {
-  if let Ok(mut titles) = app_handle.state::<WindowState>().titles.lock() {
-    titles.insert(label.to_string(), base_title.to_string());
-  }
-}
-
-fn get_base_title<R: Runtime>(app_handle: &tauri::AppHandle<R>, label: &str) -> Option<String> {
-  app_handle
-    .state::<WindowState>()
-    .titles
-    .lock()
-    .ok()
-    .and_then(|titles| titles.get(label).cloned())
-}
-
-fn ensure_base_title<R: Runtime>(
-  app_handle: &tauri::AppHandle<R>,
-  window: &tauri::WebviewWindow<R>,
-  label: &str,
-) -> String {
-  if let Some(existing) = get_base_title(app_handle, label) {
-    return existing;
-  }
-  let title = window.title().unwrap_or_else(|_| label.to_string());
-  store_base_title(app_handle, label, &title);
-  title
 }
