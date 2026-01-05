@@ -3,7 +3,7 @@ use crate::logger::{apply_log_level, LogLevel};
 use crate::settings::{load_settings, save_settings};
 use crate::tray::set_tray_enabled;
 use tauri::menu::{CheckMenuItem, Menu, MenuEvent, MenuId, PredefinedMenuItem, Submenu};
-use tauri::{Manager, Wry};
+use tauri::{is_dev, Manager, Wry};
 use tauri_plugin_autostart::ManagerExt;
 
 const MENU_CONTENT_PROTECTION_ID: &str = "menu.content_protection";
@@ -109,20 +109,28 @@ pub(crate) fn build_menu(
     &[&log_error, &log_warn, &log_info, &log_debug, &log_verbose],
   )?;
 
-  let settings_menu = Submenu::with_items(
-    app_handle,
-    "設定",
-    true,
-    &[
-      &content_protection,
-      &autostart,
-      &start_minimized,
-      &PredefinedMenuItem::separator(app_handle)?,
-      &log_menu,
-      &PredefinedMenuItem::separator(app_handle)?,
-      &PredefinedMenuItem::close_window(app_handle, None)?,
-    ],
-  )?;
+  let settings_separator = PredefinedMenuItem::separator(app_handle)?;
+  let dev_separator = if is_dev() {
+    Some(PredefinedMenuItem::separator(app_handle)?)
+  } else {
+    None
+  };
+  let close_item = PredefinedMenuItem::close_window(app_handle, None)?;
+
+  let mut settings_items: Vec<&dyn tauri::menu::IsMenuItem<Wry>> = vec![
+    &content_protection,
+    &autostart,
+    &start_minimized,
+    &settings_separator,
+  ];
+  if is_dev() {
+    settings_items.push(&log_menu);
+    if let Some(separator) = dev_separator.as_ref() {
+      settings_items.push(separator);
+    }
+  }
+  settings_items.push(&close_item);
+  let settings_menu = Submenu::with_items(app_handle, "設定", true, &settings_items)?;
 
   let menu = Menu::with_items(app_handle, &[&settings_menu])?;
   Ok(MenuState {
