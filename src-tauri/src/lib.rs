@@ -22,7 +22,7 @@ use content_protection::{
 use extensions::install_extensions_and_open;
 use extensions::{prepare_extensions, ExtensionSetup};
 use injections::{inject_hotkeys, inject_scripts};
-use log::{error, warn};
+use log::{debug, error, warn};
 use logger::{apply_log_level, build_plugin, resolve_log_level};
 use settings::{load_settings, save_settings};
 use tauri::webview::PageLoadEvent;
@@ -115,7 +115,9 @@ pub fn run() {
           .on_navigation({
             let app_handle = app_handle.clone();
             move |url| {
+              debug!("[open] on_navigation url={}", url);
               if should_open_external(url) {
+                debug!("[open] on_navigation external url={}", url);
                 let _ = app_handle.opener().open_url(url.as_str(), None::<&str>);
                 return false;
               }
@@ -125,7 +127,9 @@ pub fn run() {
           .on_new_window({
             let app_handle = app_handle.clone();
             move |url, features| {
+              debug!("[open] on_new_window url={} features={:?}", url, features);
               if should_open_external(&url) {
+                debug!("[open] on_new_window external url={}", url);
                 let _ = app_handle.opener().open_url(url.as_str(), None::<&str>);
                 return tauri::webview::NewWindowResponse::Deny;
               }
@@ -142,7 +146,9 @@ pub fn run() {
                   .on_navigation({
                     let app_handle = app_handle.clone();
                     move |url| {
+                      debug!("[open] popup on_navigation url={}", url);
                       if should_open_external(url) {
+                        debug!("[open] popup on_navigation external url={}", url);
                         let _ = app_handle.opener().open_url(url.as_str(), None::<&str>);
                         return false;
                       }
