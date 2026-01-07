@@ -168,7 +168,7 @@
     .item.is-checked.is-radio .check-mark::after {
       content: "";
       position: absolute;
-      inset: 4px;
+      inset: 2px;
       border-radius: 999px;
       background: #07b53b;
     }
