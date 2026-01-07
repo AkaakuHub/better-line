@@ -290,6 +290,11 @@
 
   const getTauriInvoke = () => window.__TAURI__?.core?.invoke;
   const getCurrentWindow = () => window.__TAURI__?.window?.getCurrentWindow?.();
+  const getIsMaximized = async () => {
+    const invoke = getTauriInvoke();
+    if (!invoke) throw new Error("Tauri invoke not available");
+    return await invoke("get_is_maximized");
+  };
   const getIsDev = async () => {
     const invoke = getTauriInvoke();
     if (!invoke) return false;
@@ -570,22 +575,18 @@
     maximizeBtn.title = isMaximized ? "Restore" : "Maximize";
   };
 
-  const refreshMaximizeState = () => {
-    const currentWindow = getCurrentWindow();
-    if (!currentWindow?.isMaximized) return;
-    currentWindow
-      .isMaximized()
-      .then(setMaximizeIcon)
-      .catch(() => {});
+  const refreshMaximizeState = async () => {
+    const isMaximized = await getIsMaximized();
+    setMaximizeIcon(isMaximized);
   };
 
-  setMaximizeIcon(false);
   maximizeBtn.addEventListener("click", async () => {
     const currentWindow = getCurrentWindow();
-    if (currentWindow) {
-      await currentWindow.toggleMaximize();
-      refreshMaximizeState();
-    }
+    if (!currentWindow) return;
+
+    const wasMaximized = await getIsMaximized();
+    await currentWindow.toggleMaximize();
+    setMaximizeIcon(!wasMaximized);
   });
 
   const closeBtn = document.createElement("button");
@@ -613,8 +614,6 @@
         listen("tauri://resize", refreshMaximizeState);
       }
     }
-    window.addEventListener("resize", refreshMaximizeState);
-    window.addEventListener("focus", refreshMaximizeState, true);
   };
 
   right.appendChild(minimizeBtn);

@@ -8,6 +8,12 @@ pub(crate) fn inject_scripts<R: tauri::Runtime>(
 ) -> Result<(), tauri::Error> {
   webview.eval(FONT_SCRIPT)?;
   webview.eval(SIDEBAR_SCRIPT)?;
+  Ok(())
+}
+
+pub(crate) fn inject_titlebar<R: tauri::Runtime>(
+  webview: &tauri::Webview<R>,
+) -> Result<(), tauri::Error> {
   webview.eval(TITLEBAR_SCRIPT)?;
   Ok(())
 }

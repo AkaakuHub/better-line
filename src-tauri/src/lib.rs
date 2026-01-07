@@ -12,7 +12,7 @@ mod updater;
 mod windowing;
 
 use app_menu::{build_menu, handle_menu_event, menu_action};
-use commands::{get_is_dev, get_settings, update_settings};
+use commands::{get_is_dev, get_is_maximized, get_settings, update_settings};
 use config::load_config;
 use content_protection::{
   ensure_base_title, get_content_protection, is_content_protected, set_content_protected,
@@ -21,7 +21,7 @@ use content_protection::{
 #[cfg(target_os = "windows")]
 use extensions::install_extensions_and_open;
 use extensions::{prepare_extensions, ExtensionSetup};
-use injections::{inject_hotkeys, inject_scripts};
+use injections::{inject_hotkeys, inject_scripts, inject_titlebar};
 use log::{debug, error, warn};
 use logger::{apply_log_level, build_plugin, resolve_log_level};
 use settings::{load_settings, save_settings};
@@ -51,8 +51,10 @@ pub fn run() {
       let _ = inject_hotkeys(webview);
       if current_url.starts_with("chrome-extension://") {
         let _ = inject_scripts(webview);
+        if label == "main" {
+          let _ = inject_titlebar(webview);
+        }
       }
-
       let app_handle = window.app_handle().clone();
       let protected = is_content_protected(&app_handle);
       if let Some(webview_window) = app_handle.get_webview_window(&label) {
@@ -72,6 +74,7 @@ pub fn run() {
       get_settings,
       update_settings,
       get_is_dev,
+      get_is_maximized,
       menu_action
     ])
     .on_window_event(|window, event| {
