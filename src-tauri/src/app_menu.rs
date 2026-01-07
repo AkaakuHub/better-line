@@ -148,8 +148,18 @@ pub(crate) fn build_menu(
 }
 
 pub(crate) fn handle_menu_event(app_handle: &tauri::AppHandle, event: MenuEvent) {
-  warn!("[menu] event id={:?}", event.id());
-  match event.id() {
+  handle_menu_action_id(app_handle, event.id().as_ref());
+}
+
+#[tauri::command]
+pub(crate) fn menu_action(app_handle: tauri::AppHandle, id: String) -> Result<(), String> {
+  handle_menu_action_id(&app_handle, id.as_str());
+  Ok(())
+}
+
+pub(crate) fn handle_menu_action_id(app_handle: &tauri::AppHandle, id: &str) {
+  warn!("[menu] action id={id}");
+  match id {
     id if id == MENU_CONTENT_PROTECTION_ID => {
       let target = !is_content_protected(app_handle);
       if let Ok(enabled) = set_content_protection_from_app(app_handle, target) {

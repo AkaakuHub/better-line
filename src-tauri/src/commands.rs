@@ -13,3 +13,8 @@ pub(crate) fn update_settings(
   save_settings(&app_handle, &settings).map_err(|error| error.to_string())?;
   Ok(settings)
 }
+
+#[tauri::command]
+pub(crate) fn get_is_dev() -> bool {
+  tauri::is_dev()
+}
