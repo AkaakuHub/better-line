@@ -32,8 +32,10 @@ prost = "0.12"
 ureq = "2.12"
 url = "2.5"
 zip = { version = "2.2", default-features = false, features = ["deflate"] }
-webview2-com = "0.38"
-windows = "0.61.2"
 sha2 = "0.10"
 log = "0.4"
 dirs = "6"
+
+[target.'cfg(windows)'.dependencies]
+webview2-com = "0.38"
+windows = "0.61.2"

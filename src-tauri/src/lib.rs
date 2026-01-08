@@ -240,6 +240,7 @@ pub fn run() {
 
       let entry_path = config.line_entry_path.clone();
       let app_handle_for_update = app_handle.clone();
+      #[cfg(target_os = "windows")]
       std::thread::spawn(move || {
         let ExtensionSetup {
           line_dir,
