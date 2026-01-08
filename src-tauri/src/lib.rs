@@ -47,14 +47,19 @@ pub fn run() {
       }
       let current_url = payload.url().as_str();
       let window = webview.window();
-      let label = window.label().to_string();
+      let label: String = window.label().to_string();
       let _ = inject_hotkeys(webview);
-      if current_url.starts_with("chrome-extension://") {
-        let _ = inject_scripts(webview);
-        if label == "main" {
-          let _ = inject_titlebar(webview);
-        }
-      }
+      // if current_url.starts_with("chrome-extension://") {
+      /**
+      * 拡張機能内のHTMLファイル一覧（4種類）：
+       index.html
+       popup.html
+       ltsmSandbox.html
+       cropperSandbox.html
+      */
+      let _ = inject_scripts(webview);
+      let _ = inject_titlebar(webview);
+      // }
       let app_handle = window.app_handle().clone();
       let protected = is_content_protected(&app_handle);
       if let Some(webview_window) = app_handle.get_webview_window(&label) {
@@ -149,6 +154,7 @@ pub fn run() {
             let mut builder =
               WebviewWindowBuilder::new(&app_handle, label, WebviewUrl::External(url.clone()))
                 .title(popup_base_title.as_str())
+                .decorations(false)
                 .browser_extensions_enabled(true)
                 .on_navigation({
                   let app_handle = app_handle.clone();
