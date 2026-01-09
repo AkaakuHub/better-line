@@ -1,4 +1,5 @@
 (() => {
+  console.log("load titlebar.js");
   // Avoid injecting duplicate titlebar
   if (document.getElementById("refined-line-titlebar-host")) return;
 
