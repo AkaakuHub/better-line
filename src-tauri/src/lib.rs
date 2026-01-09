@@ -26,6 +26,8 @@ use log::{debug, error, warn};
 use logger::{apply_log_level, build_plugin, resolve_log_level};
 use settings::{load_settings, save_settings};
 use tauri::webview::PageLoadEvent;
+#[cfg(target_os = "windows")]
+use tauri::webview::ScrollBarStyle;
 use tauri::{Manager, WebviewUrl, WebviewWindowBuilder};
 use tauri_plugin_autostart::ManagerExt;
 use tauri_plugin_dialog::DialogExt;
@@ -119,7 +121,7 @@ pub fn run() {
         .windows
         .get(0)
         .ok_or("window config not found")?;
-      let _window = WebviewWindowBuilder::from_config(&app_handle, conf)?
+      let mut builder = WebviewWindowBuilder::from_config(&app_handle, conf)?
         .browser_extensions_enabled(true)
         .on_menu_event(|window, event| {
           handle_menu_event(window.app_handle(), event);
@@ -168,6 +170,11 @@ pub fn run() {
                     true
                   }
                 });
+
+            #[cfg(target_os = "windows")]
+            {
+              builder = builder.scroll_bar_style(ScrollBarStyle::FluentOverlay);
+            }
 
             if let Some(size) = features.size() {
               builder = builder.inner_size(size.width, size.height);
@@ -225,8 +232,14 @@ pub fn run() {
 
             tauri::webview::NewWindowResponse::Create { window }
           }
-        })
-        .build()?;
+        });
+
+      #[cfg(target_os = "windows")]
+      {
+        builder = builder.scroll_bar_style(ScrollBarStyle::FluentOverlay);
+      }
+
+      let _window = builder.build()?;
 
       store_base_title(&app_handle, "main", base_title);
       app.manage(menu_state);
