@@ -3,7 +3,7 @@
 [![Release](https://img.shields.io/github/v/release/AkaakuHub/refined-line)](https://github.com/AkaakuHub/refined-line/releases)
 [![Platform](https://img.shields.io/badge/platform-Windows-blue)](https://github.com/AkaakuHub/refined-line)
 
-Only support Windows due to WebView2 dependency.
+Only support Windows due to WebView2 dependency. Requires Webview2 Runtime 125.0.2535.41 or later.
 
 ## Current Original Features
 
