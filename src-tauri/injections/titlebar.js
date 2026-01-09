@@ -629,7 +629,7 @@
   const injectTitlebar = () => {
     if (document.body && !document.body.contains(host)) {
       document.body.insertBefore(host, document.body.firstChild);
-      document.body.style.paddingTop = `${TITLEBAR_HEIGHT}px`;
+      document.documentElement.style.paddingTop = `${TITLEBAR_HEIGHT}px`;
     }
   };
 
