@@ -124,7 +124,7 @@
       width: 14px;
       height: 14px;
       border-radius: 3px;
-      border: 1px solid #efefef;
+      border: 1px solid #202a43;
       background: transparent;
       position: relative;
     }
@@ -134,13 +134,13 @@
     }
 
     .item.is-checked .check-mark {
-      border-color: #efefef;
+      border-color: #202a43;
       background: #07b53b;
     }
 
     .item.is-checked.is-radio .check-mark {
       background: transparent;
-      border-color: #efefef;
+      border-color: #202a43;
     }
 
     .item.is-checked.is-radio .check-mark::after {
