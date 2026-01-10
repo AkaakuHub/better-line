@@ -187,6 +187,7 @@
       border: none;
       margin: 0;
       padding: 0;
+      padding-left: 1.33px;
       width: 12px;
       height: 12px;
       display: inline-flex;
@@ -516,8 +517,8 @@
   minimizeBtn.type = "button";
   minimizeBtn.title = "Minimize";
   minimizeBtn.innerHTML =
-    "<svg class='control-icon' xmlns='http://www.w3.org/2000/svg' viewBox='0 0 10 10' aria-hidden='true'>" +
-    "<line x1='2' y1='5' x2='8' y2='5' stroke='currentColor' stroke-width='1.2' stroke-linecap='round'/>" +
+    "<svg class='control-icon' xmlns='http://www.w3.org/2000/svg' viewBox='0 0 12 12' aria-hidden='true'>" +
+    "<line x1='2' y1='6' x2='10' y2='6' stroke='currentColor' stroke-width='2' stroke-linecap='round'/>" +
     "</svg>";
   minimizeBtn.addEventListener("click", () => {
     const currentWindow = getCurrentWindow();
@@ -530,13 +531,15 @@
   maximizeBtn.className = "control-button maximize";
   maximizeBtn.type = "button";
   const maximizeIcon =
-    "<svg class='control-icon' xmlns='http://www.w3.org/2000/svg' viewBox='0 0 10 10' aria-hidden='true'>" +
-    "<line x1='5' y1='2' x2='5' y2='8' stroke='currentColor' stroke-width='1.2' stroke-linecap='round'/>" +
-    "<line x1='2' y1='5' x2='8' y2='5' stroke='currentColor' stroke-width='1.2' stroke-linecap='round'/>" +
+    "<svg class='control-icon' xmlns='http://www.w3.org/2000/svg' viewBox='0 0 12 12' aria-hidden='true'>" +
+    "<line x1='2' y1='6' x2='10' y2='6' stroke='currentColor' stroke-width='2' stroke-linecap='round'/>" +
+    "<line x1='6' y1='2' x2='6' y2='10' stroke='currentColor' stroke-width='2' stroke-linecap='round'/>" +
     "</svg>";
 
   const restoreIcon =
-    maximizeIcon;
+    "<svg class='control-icon' xmlns='http://www.w3.org/2000/svg' viewBox='0 0 12 12' aria-hidden='true' style='scale(1.5)'>" +
+    "<circle cx='6' cy='6' r='3' stroke='currentColor' stroke-width='1' fill='currentColor'/>" +
+    "</svg>";
 
   const setMaximizeIcon = (isMaximized) => {
     maximizeBtn.innerHTML = isMaximized ? restoreIcon : maximizeIcon;
@@ -562,9 +565,9 @@
   closeBtn.type = "button";
   closeBtn.title = "Close";
   closeBtn.innerHTML =
-    "<svg class='control-icon' xmlns='http://www.w3.org/2000/svg' viewBox='0 0 10 10' aria-hidden='true'>" +
-    "<line x1='2.5' y1='2.5' x2='7.5' y2='7.5' stroke='currentColor' stroke-width='1.2' stroke-linecap='round'/>" +
-    "<line x1='7.5' y1='2.5' x2='2.5' y2='7.5' stroke='currentColor' stroke-width='1.2' stroke-linecap='round'/>" +
+    "<svg class='control-icon' xmlns='http://www.w3.org/2000/svg' viewBox='0 0 12 12' aria-hidden='true'>" +
+    "<line x1='2' y1='2' x2='10' y2='10' stroke='currentColor' stroke-width='2' stroke-linecap='round'/>" +
+    "<line x1='10' y1='2' x2='2' y2='10' stroke='currentColor' stroke-width='2' stroke-linecap='round'/>" +
     "</svg>";
   closeBtn.addEventListener("click", () => {
     const currentWindow = getCurrentWindow();
