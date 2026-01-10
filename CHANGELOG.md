@@ -1,5 +1,31 @@
 # Changelog
 
+## [0.3.0](https://github.com/AkaakuHub/refined-line/compare/v0.2.1...v0.3.0) (2026-01-10)
+
+
+### Features
+
+* add load indicator ([50a133e](https://github.com/AkaakuHub/refined-line/commit/50a133e13f7de74dc1716d7e4e5445ec57953e43))
+* add padding to html ([2a671dc](https://github.com/AkaakuHub/refined-line/commit/2a671dc3d5939e23a516f00ec320dc8e86e247f9))
+* change color ([70f9c46](https://github.com/AkaakuHub/refined-line/commit/70f9c462703a83af7f3b6b2ebee3d73b4a111248))
+* change injection condition ([58a09d8](https://github.com/AkaakuHub/refined-line/commit/58a09d890ee810d5d1fd8618a4655320e543b29e))
+* readme ([08fd706](https://github.com/AkaakuHub/refined-line/commit/08fd7060f75b907bff66067416392e6b166ae5a2))
+* refine design ([01530aa](https://github.com/AkaakuHub/refined-line/commit/01530aa19fed38a15e0b69456fa88ca72aef9f89))
+* remake readme ([5131870](https://github.com/AkaakuHub/refined-line/commit/51318708136256b4ccb9285fd5998e5dbc647bba))
+* UIをデコレーション ([c3ececc](https://github.com/AkaakuHub/refined-line/commit/c3ececcd1dbe501c695eab5d023b0adb6656b371))
+
+
+### Bug Fixes
+
+* button inset ([c0d1bbf](https://github.com/AkaakuHub/refined-line/commit/c0d1bbf078cdd80996f19b65dd5024f09328b48c))
+* delete unused menu ([712ef8d](https://github.com/AkaakuHub/refined-line/commit/712ef8d3184e0af57ddd30702f7ae10253038cfd))
+* duplicated new window ([aade083](https://github.com/AkaakuHub/refined-line/commit/aade083f90a5b2c89628ba38875d8470277fbbd4))
+* menu bar issue ([0e98232](https://github.com/AkaakuHub/refined-line/commit/0e98232d82fc6513d951fd6d4c7d96900df9b746))
+* paddingが増える問題 ([3ff8dd7](https://github.com/AkaakuHub/refined-line/commit/3ff8dd7f0ff786b57d3e9d406f6770db0d874782))
+* refined scroll bar ([885af1a](https://github.com/AkaakuHub/refined-line/commit/885af1a6582f418841a50aa78b450f646a07af8c))
+* top control design ([27ffdf6](https://github.com/AkaakuHub/refined-line/commit/27ffdf6a64011eb614e7c483d79a21f5d36c23b8))
+* unused value ([17731d8](https://github.com/AkaakuHub/refined-line/commit/17731d8273157a7544a311d93b2c46bfb564bf50))
+
 ## [0.2.1](https://github.com/AkaakuHub/refined-line/compare/v0.2.0...v0.2.1) (2026-01-06)
 
 
