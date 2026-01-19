@@ -22,11 +22,10 @@ use content_protection::{
 #[cfg(target_os = "windows")]
 use extensions::install_extensions_and_open;
 use extensions::{
-  log_cookies_snapshot, log_storage_snapshot, persist_session_cookies_snapshot, prepare_extensions,
-  ExtensionSetup,
+  log_cookies_snapshot, persist_session_cookies_snapshot, prepare_extensions, ExtensionSetup,
 };
 use injections::{inject_hotkeys, inject_scripts, inject_titlebar};
-use log::{debug, error, info, warn};
+use log::{debug, error, warn};
 use logger::{apply_log_level, build_plugin, resolve_log_level};
 use paths::app_data_root;
 use settings::{load_settings, save_settings};
@@ -121,7 +120,6 @@ pub fn run() {
       let app_data = app_data_root(&app_handle)?;
       let profile_dir = app_data.join("webview2-profile");
       std::fs::create_dir_all(&profile_dir)?;
-      info!("[webview] profile dir={}", profile_dir.display());
 
       let base_title = "refined-line";
       let conf = app_handle
@@ -336,9 +334,6 @@ pub fn run() {
                     }
                     if let Err(error) = log_cookies_snapshot(&webview, &tag_for_webview) {
                       warn!("[cookie] {tag_for_webview} failed: {error:#}");
-                    }
-                    if let Err(error) = log_storage_snapshot(&webview, &tag_for_webview) {
-                      warn!("[storage] {tag_for_webview} failed: {error:#}");
                     }
                   }) {
                     warn!("[cookie] {tag} with_webview failed: {error:#}");

@@ -25,8 +25,7 @@ use webview2_com::Microsoft::Web::WebView2::Win32::{
 };
 #[cfg(target_os = "windows")]
 use webview2_com::{
-  take_pwstr, wait_with_pump, BrowserExtensionEnableCompletedHandler,
-  ExecuteScriptCompletedHandler, GetCookiesCompletedHandler,
+  take_pwstr, wait_with_pump, BrowserExtensionEnableCompletedHandler, GetCookiesCompletedHandler,
   ProfileAddBrowserExtensionCompletedHandler,
 };
 #[cfg(target_os = "windows")]
@@ -70,12 +69,8 @@ pub(crate) fn prepare_extensions(app: &tauri::AppHandle) -> Result<ExtensionSetu
       Ok(UpdateCheck::NoUpdate) => {
         if has_existing {
           info!("[update] use local extension (v{})", version);
-          if let Err(error) = disable_cache_clear(&line_dir) {
-            warn!("[patch] disable cache clear failed: {error:#}");
-          }
-          if let Err(error) = disable_legacy_clear(&line_dir) {
-            warn!("[patch] disable legacy clear failed: {error:#}");
-          }
+          let _ = disable_cache_clear(&line_dir);
+          let _ = disable_legacy_clear(&line_dir);
           return Ok(ExtensionSetup {
             line_dir,
             user_dir,
@@ -111,12 +106,8 @@ pub(crate) fn prepare_extensions(app: &tauri::AppHandle) -> Result<ExtensionSetu
   if update_failed {
     if has_existing {
       info!("[update] use local extension (update failed)");
-      if let Err(error) = disable_cache_clear(&line_dir) {
-        warn!("[patch] disable cache clear failed: {error:#}");
-      }
-      if let Err(error) = disable_legacy_clear(&line_dir) {
-        warn!("[patch] disable legacy clear failed: {error:#}");
-      }
+      let _ = disable_cache_clear(&line_dir);
+      let _ = disable_legacy_clear(&line_dir);
       return Ok(ExtensionSetup {
         line_dir,
         user_dir,
@@ -132,12 +123,8 @@ pub(crate) fn prepare_extensions(app: &tauri::AppHandle) -> Result<ExtensionSetu
   ensure_clean_dir(&line_dir)?;
   extract_zip(&parsed.zip_bytes, &line_dir)?;
   inject_manifest_key(&line_dir, &parsed.public_key)?;
-  if let Err(error) = disable_cache_clear(&line_dir) {
-    warn!("[patch] disable cache clear failed: {error:#}");
-  }
-  if let Err(error) = disable_legacy_clear(&line_dir) {
-    warn!("[patch] disable legacy clear failed: {error:#}");
-  }
+  let _ = disable_cache_clear(&line_dir);
+  let _ = disable_legacy_clear(&line_dir);
   if let Some(version) = read_manifest_version(&line_dir) {
     info!("[update] installed extension v{} (network)", version);
   } else {
@@ -235,24 +222,12 @@ fn read_manifest_version(path: &Path) -> Option<String> {
 fn disable_cache_clear(line_dir: &Path) -> Result<()> {
   let cache_path = line_dir.join("cache.js");
   if !cache_path.is_file() {
-    info!("[patch] cache clear skip (cache.js not found)");
     return Ok(());
   }
   let raw = fs::read_to_string(&cache_path)?;
   if raw.contains("caches.delete(CACHE_NAME)") {
     let updated = raw.replace("caches.delete(CACHE_NAME)", "Promise.resolve()");
     fs::write(&cache_path, updated)?;
-    info!("[patch] cache clear disabled: {}", cache_path.display());
-  } else if raw.contains("Promise.resolve()") {
-    info!(
-      "[patch] cache clear already disabled: {}",
-      cache_path.display()
-    );
-  } else {
-    info!(
-      "[patch] cache clear pattern not found: {}",
-      cache_path.display()
-    );
   }
   Ok(())
 }
@@ -260,7 +235,6 @@ fn disable_cache_clear(line_dir: &Path) -> Result<()> {
 fn disable_legacy_clear(line_dir: &Path) -> Result<()> {
   let background_path = line_dir.join("background.js");
   if !background_path.is_file() {
-    info!("[patch] legacy clear skip (background.js not found)");
     return Ok(());
   }
   let raw = fs::read_to_string(&background_path)?;
@@ -276,20 +250,6 @@ fn disable_legacy_clear(line_dir: &Path) -> Result<()> {
   }
   if changed {
     fs::write(&background_path, updated)?;
-    info!(
-      "[patch] legacy clear disabled: {}",
-      background_path.display()
-    );
-  } else if raw.contains("Promise.resolve()") || raw.contains("Promise.resolve([])") {
-    info!(
-      "[patch] legacy clear already disabled: {}",
-      background_path.display()
-    );
-  } else {
-    info!(
-      "[patch] legacy clear pattern not found: {}",
-      background_path.display()
-    );
   }
   Ok(())
 }
@@ -353,12 +313,6 @@ pub(crate) fn install_extensions_and_open(
       .Profile()?
       .cast::<ICoreWebView2Profile7>()?
   };
-  let profile_path = unsafe {
-    let mut path_ptr = PWSTR::null();
-    profile.ProfilePath(&mut path_ptr)?;
-    take_pwstr(path_ptr)
-  };
-  info!("[webview] profile path={}", profile_path);
 
   let line_extension = add_browser_extension(&profile, &line_dir)?;
   ensure_extension_enabled(&line_extension)?;
@@ -396,21 +350,11 @@ pub(crate) fn log_cookies_snapshot(webview: &PlatformWebview, tag: &str) -> Resu
 #[cfg(target_os = "windows")]
 fn log_cookies(core: &ICoreWebView2, tag: &str, uri: &str) -> Result<()> {
   let cookies = collect_cookies(core, Some(uri))?;
-  if cookies.is_empty() {
-    info!("[cookie] {tag} {uri} count=0");
-    return Ok(());
-  }
   let session_count = cookies.iter().filter(|cookie| cookie.is_session).count();
-  let names = cookies
-    .iter()
-    .map(|cookie| cookie.name.as_str())
-    .collect::<Vec<_>>()
-    .join(",");
   info!(
-    "[cookie] {tag} {uri} count={} session={} names={}",
+    "[cookie] {tag} {uri} count={} session={}",
     cookies.len(),
-    session_count,
-    names
+    session_count
   );
   Ok(())
 }
@@ -423,69 +367,6 @@ pub(crate) fn persist_session_cookies_snapshot(webview: &PlatformWebview, tag: &
   persist_session_cookies(&core, tag, "https://access.line.me")?;
   persist_session_cookies(&core, tag, "https://line.me")?;
   persist_session_cookies(&core, tag, "https://api.line.me")?;
-  Ok(())
-}
-
-#[cfg(target_os = "windows")]
-pub(crate) fn log_storage_snapshot(webview: &PlatformWebview, tag: &str) -> Result<()> {
-  let controller = webview.controller();
-  let core = unsafe { controller.CoreWebView2()? };
-  let result = execute_script_json(
-    &core,
-    r#"(async () => {
-      try {
-        const hasChrome = typeof chrome !== "undefined";
-        const hasStorage = !!(hasChrome && chrome.storage && chrome.storage.local);
-        const hasCookies = !!(hasChrome && chrome.cookies);
-        const storage = hasStorage ? await chrome.storage.local.get(null) : {};
-        const keys = Object.keys(storage || {});
-        const localCount = Object.keys(localStorage || {}).length;
-        const sessionCount = Object.keys(sessionStorage || {}).length;
-        let dbCount = null;
-        let dbNames = [];
-        if (indexedDB?.databases) {
-          const dbs = await indexedDB.databases();
-          dbCount = Array.isArray(dbs) ? dbs.length : null;
-          dbNames = Array.isArray(dbs) ? dbs.map((d) => d && d.name).filter(Boolean).slice(0, 20) : [];
-        }
-        let cookieCount = null;
-        let cookieSessionCount = null;
-        let cookieDomains = [];
-        if (hasCookies) {
-          const cookies = await new Promise((resolve) =>
-            chrome.cookies.getAll({}, (items) => resolve(items || []))
-          );
-          cookieCount = cookies.length;
-          cookieSessionCount = cookies.filter((c) => c.session).length;
-          const domains = [...new Set(cookies.map((c) => c.domain).filter(Boolean))];
-          cookieDomains = domains.slice(0, 20);
-        }
-        return JSON.stringify({
-          href: location.href,
-          origin: location.origin,
-          runtimeId: hasChrome && chrome.runtime ? chrome.runtime.id : null,
-          hasChrome,
-          hasStorage,
-          hasCookies,
-          keysCount: keys.length,
-          keys,
-          localCount,
-          sessionCount,
-          dbCount,
-          dbNames,
-          cookieCount,
-          cookieSessionCount,
-          cookieDomains
-        });
-      } catch (e) {
-        return JSON.stringify({ error: String(e) });
-      }
-    })()"#,
-  )?;
-  match serde_json::from_str::<serde_json::Value>(&result) {
-    Ok(value) => info!("[storage] {tag} {value}"),
-    Err(_) => info!("[storage] {tag} raw={result}"),
-  }
   Ok(())
 }
 
@@ -627,23 +508,6 @@ fn collect_cookies(core: &ICoreWebView2, uri: Option<&str>) -> Result<Vec<Cookie
 }
 
 #[cfg(target_os = "windows")]
-fn execute_script_json(core: &ICoreWebView2, script: &str) -> Result<String> {
-  let (tx, rx) = mpsc::channel();
-  let script_hs = HSTRING::from(script);
-  unsafe {
-    core.ExecuteScript(
-      &script_hs,
-      &ExecuteScriptCompletedHandler::create(Box::new(move |result, value| {
-        result?;
-        let _ = tx.send(value);
-        Ok(())
-      })),
-    )?;
-  }
-  wait_with_pump(rx).map_err(Into::into)
-}
-
-#[cfg(target_os = "windows")]
 struct CookieInfo {
   name: String,
   value: String,
@@ -658,30 +522,11 @@ struct CookieInfo {
 #[cfg(target_os = "windows")]
 fn log_all_cookies_summary(core: &ICoreWebView2, tag: &str) -> Result<()> {
   let cookies = collect_cookies(core, None)?;
-  if cookies.is_empty() {
-    info!("[cookie] {tag} all count=0");
-    return Ok(());
-  }
   let session_count = cookies.iter().filter(|cookie| cookie.is_session).count();
-  let mut domains = cookies
-    .iter()
-    .map(|cookie| cookie.domain.as_str())
-    .filter(|domain| !domain.is_empty())
-    .collect::<Vec<_>>();
-  domains.sort_unstable();
-  domains.dedup();
-  let sample = domains
-    .iter()
-    .take(20)
-    .cloned()
-    .collect::<Vec<_>>()
-    .join(",");
   info!(
-    "[cookie] {tag} all count={} session={} domains={} sample={}",
+    "[cookie] {tag} all count={} session={}",
     cookies.len(),
-    session_count,
-    domains.len(),
-    sample
+    session_count
   );
   Ok(())
 }
