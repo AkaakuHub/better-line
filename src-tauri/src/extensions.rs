@@ -5,7 +5,7 @@ use crate::crx::{
 };
 use crate::paths::app_data_root;
 use anyhow::{anyhow, Result};
-use log::{info, warn};
+use log::{debug, info, warn};
 use serde_json::Value;
 use std::fs;
 use std::path::{Path, PathBuf};
@@ -351,7 +351,7 @@ pub(crate) fn log_cookies_snapshot(webview: &PlatformWebview, tag: &str) -> Resu
 fn log_cookies(core: &ICoreWebView2, tag: &str, uri: &str) -> Result<()> {
   let cookies = collect_cookies(core, Some(uri))?;
   let session_count = cookies.iter().filter(|cookie| cookie.is_session).count();
-  info!(
+  debug!(
     "[cookie] {tag} {uri} count={} session={}",
     cookies.len(),
     session_count
@@ -374,13 +374,13 @@ pub(crate) fn persist_session_cookies_snapshot(webview: &PlatformWebview, tag: &
 fn persist_session_cookies(core: &ICoreWebView2, tag: &str, uri: &str) -> Result<()> {
   let mut cookies = collect_cookies(core, Some(uri))?;
   if cookies.is_empty() {
-    info!("[cookie] {tag} {uri} persist skipped (count=0)");
+    debug!("[cookie] {tag} {uri} persist skipped (count=0)");
     return Ok(());
   }
 
   let session_total = cookies.iter().filter(|cookie| cookie.is_session).count();
   if session_total == 0 {
-    info!("[cookie] {tag} {uri} persist skipped (no session cookies)");
+    debug!("[cookie] {tag} {uri} persist skipped (no session cookies)");
     return Ok(());
   }
 
@@ -432,7 +432,7 @@ fn persist_session_cookies(core: &ICoreWebView2, tag: &str, uri: &str) -> Result
     updated += 1;
   }
 
-  info!("[cookie] {tag} {uri} persisted {updated}/{session_total} session cookies");
+  debug!("[cookie] {tag} {uri} persisted {updated}/{session_total} session cookies");
   Ok(())
 }
 
@@ -523,7 +523,7 @@ struct CookieInfo {
 fn log_all_cookies_summary(core: &ICoreWebView2, tag: &str) -> Result<()> {
   let cookies = collect_cookies(core, None)?;
   let session_count = cookies.iter().filter(|cookie| cookie.is_session).count();
-  info!(
+  debug!(
     "[cookie] {tag} all count={} session={}",
     cookies.len(),
     session_count
@@ -535,12 +535,12 @@ fn log_all_cookies_summary(core: &ICoreWebView2, tag: &str) -> Result<()> {
 fn persist_all_session_cookies(core: &ICoreWebView2, tag: &str) -> Result<()> {
   let mut cookies = collect_cookies(core, None)?;
   if cookies.is_empty() {
-    info!("[cookie] {tag} all persist skipped (count=0)");
+    debug!("[cookie] {tag} all persist skipped (count=0)");
     return Ok(());
   }
   let session_total = cookies.iter().filter(|cookie| cookie.is_session).count();
   if session_total == 0 {
-    info!("[cookie] {tag} all persist skipped (no session cookies)");
+    debug!("[cookie] {tag} all persist skipped (no session cookies)");
     return Ok(());
   }
 
@@ -582,6 +582,6 @@ fn persist_all_session_cookies(core: &ICoreWebView2, tag: &str) -> Result<()> {
     updated += 1;
   }
 
-  info!("[cookie] {tag} all persisted {updated}/{session_total} session cookies");
+  debug!("[cookie] {tag} all persisted {updated}/{session_total} session cookies");
   Ok(())
 }
