@@ -155,6 +155,7 @@ pub fn run() {
 
             let mut builder =
               WebviewWindowBuilder::new(&app_handle, label, WebviewUrl::External(url.clone()))
+                .disable_drag_drop_handler()
                 .title(popup_base_title.as_str())
                 .decorations(false)
                 .browser_extensions_enabled(true)
